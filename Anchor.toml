@@ -1,0 +1,17 @@
+[features]
+seeds = false
+skip-lint = false
+[programs.localnet]
+permissioned_token_wrapper = "7vnNq5wAJPAoocKqwRWv6dUoZBGrZDCS3ULspFXGdGVx"
+twice_permissioned = "6Cjkj2r1Mhos8JrM7v3CZCW9SkLGjX2UKr42hk2Zx5oJ"
+caller = "6Dmq9ijrYZio9ny6PezemaWe3kcs7qbJ8sB78LHgQDeY"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "/Users/noahgundotra/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
