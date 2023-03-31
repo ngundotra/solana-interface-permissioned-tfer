@@ -1,12 +1,12 @@
 [package]
-name = "twice-permissioned"
+name = "twice-wrapper"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "twice_permissioned"
+name = "twice_wrapper"
 
 [features]
 no-entrypoint = []
@@ -16,6 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { version = "0.27.0", features=["init-if-needed"] }
+anchor-lang = "0.27.0"
 anchor-spl = "0.27.0"
+
 interface = { path = "../../interface" }

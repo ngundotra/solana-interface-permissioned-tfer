@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface, TokenAccount, self};
 
+use interface::{IAccountMeta, PreflightAccounts};
+
 declare_id!("7vnNq5wAJPAoocKqwRWv6dUoZBGrZDCS3ULspFXGdGVx");
 
 #[program]
@@ -26,28 +28,28 @@ pub mod permissioned_token_wrapper {
         }
     }
 
-    pub fn preflight_lock(ctx: Context<ILock>) -> Result<PreflightAccounts> {
+    pub fn preflight_lock(ctx: Context<ILock>) -> Result<Vec<u8>> {
         let token = ctx.accounts.token.key();
         let (program_control, _) = Pubkey::find_program_address(&[STATIC_PREFIX.as_bytes()], &crate::id());
         let (token_record, _) = Pubkey::find_program_address(&[token.key().as_ref(), TOKEN_RECORD_PREFIX.as_bytes()], &crate::id());
         let system_program = System::id();
-        Ok(PreflightAccounts { pubkeys: vec![
+        Ok(PreflightAccounts { accounts: vec![
             IAccountMeta { pubkey: program_control, signer: false, writable: false }, 
             IAccountMeta { pubkey: token_record, signer: false, writable: true }, 
             IAccountMeta { pubkey: system_program, signer: false, writable: false }
-        ] })
+        ] }.try_to_vec()?)
     }
 
-    pub fn preflight_unlock(ctx: Context<IUnlock>) -> Result<PreflightAccounts> {
+    pub fn preflight_unlock(ctx: Context<IUnlock>) -> Result<Vec<u8>> {
         let token = ctx.accounts.token.key();
         let (program_control, _) = Pubkey::find_program_address(&[STATIC_PREFIX.as_bytes()], &crate::id());
         let (token_record, _) = Pubkey::find_program_address(&[token.key().as_ref(), TOKEN_RECORD_PREFIX.as_bytes()], &crate::id());
         let system_program = System::id();
-        Ok(PreflightAccounts { pubkeys: vec![
+        Ok(PreflightAccounts { accounts: vec![
             IAccountMeta { pubkey: program_control, signer: false, writable: false }, 
             IAccountMeta { pubkey: token_record, signer: false, writable: true }, 
             IAccountMeta { pubkey: system_program, signer: false, writable: false }
-        ] })
+        ] }.try_to_vec()?)
     }
 
     pub fn lock(ctx: Context<Lock>) -> Result<()> {
@@ -96,18 +98,6 @@ pub const TOKEN_RECORD_PREFIX: &'static str = "token_record";
 #[account]
 pub struct TokenRecord {
     pub locked: u8,
-}
-
-#[derive(Debug, Clone, AnchorSerialize, AnchorDeserialize)]
-pub struct IAccountMeta {
-    pub pubkey: Pubkey,
-    pub signer: bool,
-    pub writable: bool,
-}
-
-#[account]
-pub struct IxAccounts {
-    accounts: Vec<IAccountMeta>,
 }
 
 #[derive(Accounts)]
@@ -168,7 +158,6 @@ pub struct Unlock<'info> {
     #[account(constraint = token.owner == delegate.key() || token.delegate.is_some() && token.delegate.unwrap() == delegate.key())]
     delegate: Signer<'info>,
     token_program: Interface<'info, TokenInterface>,
-    #[account(mut)]
     /// CHECK: nothing
     #[account(
         seeds=[STATIC_PREFIX.as_bytes()], 
@@ -179,9 +168,4 @@ pub struct Unlock<'info> {
     #[account(mut, seeds=[token.key().as_ref(), b"token_record"], bump)]
     token_record: Account<'info, TokenRecord>,
     system_program: Program<'info, System>,
-}
-
-#[account]
-pub struct PreflightAccounts {
-    pub pubkeys: Vec<IAccountMeta>,
 }

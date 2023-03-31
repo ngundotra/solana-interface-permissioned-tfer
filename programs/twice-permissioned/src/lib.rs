@@ -1,45 +1,36 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface, TokenAccount, self};
 
+use interface::{PreflightAccounts, IAccountMeta};
+
 declare_id!("6Cjkj2r1Mhos8JrM7v3CZCW9SkLGjX2UKr42hk2Zx5oJ");
 
 #[program]
 pub mod twice_permissioned {
     use super::*;
 
-    pub mod admin {
-        use super::*;
-        pub fn set_ix_accounts<'info>(
-            ctx: Context<SetIxAccounts>,
-            accounts: Vec<Pubkey>
-        ) -> Result<()> {
-            // let mut ix_accounts = vec![];
-            // for account in accounts {
-            //     ix_accounts.push(AccountMeta {
-            //         pubkey: *account.key,
-            //         is_signer: account.is_signer,
-            //         is_writable: account.is_writable,
-            //     });
-            // }
-            // ix.accounts = ix_accounts;
-            Ok(())
-        }
-    }
-
-    pub fn preflight_lock(ctx: Context<ILock>) -> Result<PreflightAccounts> {
+    pub fn preflight_lock(ctx: Context<ILock>) -> Result<Vec<u8>> {
         let token = ctx.accounts.token.key();
         let (program_control, _) = Pubkey::find_program_address(&[STATIC_PREFIX.as_bytes()], &crate::id());
         let (token_record, _) = Pubkey::find_program_address(&[token.key().as_ref(), TOKEN_RECORD_PREFIX.as_bytes()], &crate::id());
         let system_program = System::id();
-        Ok(PreflightAccounts { pubkeys: vec![program_control, token_record, system_program] })
+        Ok(PreflightAccounts { accounts: vec![
+            IAccountMeta { pubkey: program_control, signer: false, writable: false }, 
+            IAccountMeta { pubkey: token_record, signer: false, writable: true }, 
+            IAccountMeta { pubkey: system_program, signer: false, writable: false }
+        ] }.try_to_vec()?)
     }
 
-    pub fn preflight_unlock(ctx: Context<IUnlock>) -> Result<PreflightAccounts> {
+    pub fn preflight_unlock(ctx: Context<IUnlock>) -> Result<Vec<u8>> {
         let token = ctx.accounts.token.key();
         let (program_control, _) = Pubkey::find_program_address(&[STATIC_PREFIX.as_bytes()], &crate::id());
         let (token_record, _) = Pubkey::find_program_address(&[token.key().as_ref(), TOKEN_RECORD_PREFIX.as_bytes()], &crate::id());
         let system_program = System::id();
-        Ok(PreflightAccounts { pubkeys: vec![program_control, token_record, system_program] })
+        Ok(PreflightAccounts { accounts: vec![
+            IAccountMeta { pubkey: program_control, signer: false, writable: false }, 
+            IAccountMeta { pubkey: token_record, signer: false, writable: true }, 
+            IAccountMeta { pubkey: system_program, signer: false, writable: false }
+        ] }.try_to_vec()?)
     }
 
     pub fn lock(ctx: Context<Lock>) -> Result<()> {
@@ -173,9 +164,4 @@ pub struct Unlock<'info> {
     #[account(mut, seeds=[token.key().as_ref(), b"token_record"], bump)]
     token_record: Account<'info, TokenRecord>,
     system_program: Program<'info, System>,
-}
-
-#[account]
-pub struct PreflightAccounts {
-    pub pubkeys: Vec<Pubkey>,
 }
