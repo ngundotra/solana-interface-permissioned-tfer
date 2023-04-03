@@ -119,6 +119,8 @@ pub struct Lock<'info> {
     mint: InterfaceAccount<'info, Mint>,
     #[account(constraint = token.owner == delegate.key() || token.delegate.is_some() && token.delegate.unwrap() == delegate.key())]
     delegate: Signer<'info>,
+    #[account(mut)]
+    payer: Signer<'info>,
     token_program: Interface<'info, TokenInterface>,
     /// CHECK: nothing
     #[account(
@@ -127,8 +129,6 @@ pub struct Lock<'info> {
         constraint = mint.freeze_authority.is_some() && mint.freeze_authority.unwrap() == program_control.key()
     )]
     program_control: AccountInfo<'info>,
-    #[account(mut)]
-    payer: Signer<'info>,
     #[account(init_if_needed, payer=payer, space=8 + std::mem::size_of::<TokenRecord>(), seeds=[token.key().as_ref(), TOKEN_RECORD_PREFIX.as_bytes()], bump)]
     token_record: Account<'info, TokenRecord>,
     system_program: Program<'info, System>,
@@ -153,7 +153,6 @@ pub struct Unlock<'info> {
     #[account(constraint = token.owner == delegate.key() || token.delegate.is_some() && token.delegate.unwrap() == delegate.key())]
     delegate: Signer<'info>,
     token_program: Interface<'info, TokenInterface>,
-    #[account(mut)]
     /// CHECK: nothing
     #[account(
         seeds=[STATIC_PREFIX.as_bytes()], 

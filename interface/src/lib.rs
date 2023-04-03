@@ -47,10 +47,6 @@ impl PreflightAccounts {
     }
 }
 
-// pub fn call_unlock() -> Result<()> {
-//     Ok(())
-// }
-
 pub fn get_interface_accounts(program_key: &Pubkey) -> Result<PreflightAccounts> {
     let (key, program_data) = get_return_data().unwrap();
     assert_eq!(key, *program_key);
@@ -95,28 +91,6 @@ pub fn call<
     )?;
     Ok(())
 }
-
-// pub fn call_lock<'info>(ctx: CpiContext<'_, '_, '_, 'info, TILock<'info>>) -> Result<()> {
-//     let ix_name = "lock".to_string();
-//     // preflight
-//     call_preflight_interface_function(ix_name.clone(), &ctx)?;
-//     // parse cpi return data
-//     let additional_interface_accounts = get_interface_accounts(&ctx.accounts.perm_program.key())?;
-
-//     let cpi_ctx = CpiContext::new(
-//         ctx.accounts.perm_program.clone(),
-//         ILock {
-//             token: ctx.accounts.token.clone(),
-//             mint: ctx.accounts.mint.clone(),
-//             delegate: ctx.accounts.delegate.clone(),
-//             payer: ctx.accounts.payer.clone(),
-//             token_program: ctx.accounts.token_program.clone(),
-//         },
-//     )
-//     .with_remaining_accounts(ctx.remaining_accounts.to_vec());
-//     call_interface_function(ix_name.clone(), cpi_ctx, additional_interface_accounts)?;
-//     Ok(())
-// }
 
 fn call_preflight_interface_function<'info, T: ToAccountInfos<'info> + ToAccountMetas>(
     function_name: String,

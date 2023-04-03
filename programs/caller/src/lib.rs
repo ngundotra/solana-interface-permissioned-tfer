@@ -55,46 +55,7 @@ pub struct TILock<'info> {
     token_program: Interface<'info, TokenInterface>,
     /// CHECK: permission program
     perm_program: AccountInfo<'info>,
-    // ix_accounts: Option<Account<'info, IxAccounts>>,
 }
-
-// impl<'info> Into<'static, _TILock<'_>> for TIUnlock<'info> {
-//     fn into(self) -> _TILock<'info> {}
-// }
-// impl<'info> Into<&mut Context<'_, '_, '_, 'info, _TILock<'info>>>
-//     for Context<'_, '_, '_, 'info, TILock<'info>>
-// {
-// fn convert_lock_ctx<'info>(
-//     ctx: &Context<'_, '_, '_, 'info, TILock<'info>>,
-// ) -> Context<'info, 'info, 'info, 'info, _TILock<'info>> {
-//     let mut cpi_accounts = _TILock {
-//         token: ctx.accounts.token.clone(),
-//         mint: ctx.accounts.mint.clone(),
-//         delegate: ctx.accounts.delegate.clone(),
-//         payer: ctx.accounts.payer.clone(),
-//         token_program: ctx.accounts.token_program.clone(),
-//         perm_program: ctx.accounts.perm_program.clone(),
-//     };
-
-//     Context::<_TILock>::new(
-//         &ctx.accounts.perm_program.key(),
-//         &mut cpi_accounts,
-//         ctx.remaining_accounts,
-//         ctx.bumps,
-//     )
-// }
-// fn into(accounts: &mut InitializeEscrow<'info>) -> Self {
-//     let cpi_accounts = SetAuthority {
-//         account_or_mint: accounts
-//             .initializer_deposit_token_account
-//             .to_account_info()
-//             .clone(),
-//         current_authority: accounts.initializer.to_account_info().clone(),
-//     };
-//     let cpi_program = accounts.token_program.to_account_info();
-//     CpiContext::new(cpi_program, cpi_accounts)
-//     // }
-// }
 
 #[derive(Accounts)]
 pub struct TIUnlock<'info> {
@@ -105,5 +66,4 @@ pub struct TIUnlock<'info> {
     token_program: Interface<'info, TokenInterface>,
     /// CHECK: permission program
     perm_program: AccountInfo<'info>,
-    // ix_accounts: Option<Account<'info, IxAccounts>>,
 }
