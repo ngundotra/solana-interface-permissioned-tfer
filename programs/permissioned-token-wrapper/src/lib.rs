@@ -144,7 +144,7 @@ pub struct IUnlock<'info> {
     token: InterfaceAccount<'info, TokenAccount>,
     mint: InterfaceAccount<'info, Mint>,
     /// CHECK: nil
-    owner: AccountInfo<'info>,
+    delegate: Signer<'info>,
     token_program: Interface<'info, TokenInterface>,
     // #[account(seeds=["unlock".as_bytes()], bump)]
     // ix_accounts: Option<Account<'info, IxAccounts>>

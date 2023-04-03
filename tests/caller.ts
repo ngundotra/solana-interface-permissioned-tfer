@@ -146,7 +146,7 @@ describe("caller-program", () => {
       try {
         let txid = await program.provider.sendAndConfirm(transaction, [], {
           skipPreflight: true,
-          preflightCommitment: "confirmed",
+          commitment: "confirmed",
         });
         throw Error("Should not be able to transfer locked token");
       } catch (e) {
@@ -154,6 +154,8 @@ describe("caller-program", () => {
       }
     });
     it("Can unlock user token account", async () => {
+      let trAcc = await program.account.tokenRecord.fetch(tokenRecord);
+      console.log("TOKEN RECORD:", trAcc);
       const tx = await caller.methods
         .unlock()
         .accounts({
@@ -191,7 +193,6 @@ describe("caller-program", () => {
 
       let txid = await program.provider.sendAndConfirm(transaction, [], {
         skipPreflight: true,
-        preflightCommitment: "confirmed",
       });
       console.log("\tTransferred token to normie: ", txid);
     });
