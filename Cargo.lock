@@ -526,6 +526,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "interface",
 ]
 
 [[package]]
@@ -997,6 +998,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "interface"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+]
+
+[[package]]
 name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1296,6 +1305,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "interface",
 ]
 
 [[package]]
@@ -2108,6 +2118,16 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "interface",
+]
+
+[[package]]
+name = "twice-wrapper"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "interface",
 ]
 
 [[package]]

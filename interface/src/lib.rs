@@ -50,12 +50,6 @@ pub fn call_unlock() -> Result<()> {
 }
 
 pub fn call_lock<'info>(ctx: CpiContext<'_, '_, '_, 'info, TILock<'info>>) -> Result<()> {
-    let token = &ctx.accounts.token;
-    let mint = &ctx.accounts.mint;
-    let delegate = &ctx.accounts.delegate;
-    let payer = &ctx.accounts.payer;
-    let token_program = &ctx.accounts.token_program;
-
     // setup preflight
     {
         let ix_data: Vec<u8> = hash::hash("global:preflight_lock".as_bytes())
@@ -77,68 +71,83 @@ pub fn call_lock<'info>(ctx: CpiContext<'_, '_, '_, 'info, TILock<'info>>) -> Re
         let (program_key, program_data) = get_return_data().unwrap();
         assert_eq!(program_key, ctx.accounts.perm_program.key());
         let mut program_data = program_data.as_slice();
-        program_data = &program_data[12..];
-        let additional_interface_accounts = PreflightAccounts::deserialize(&mut program_data)?;
+        let return_data: Vec<u8> = Vec::try_from_slice(&mut program_data)?;
+        let additional_interface_accounts = PreflightAccounts::try_from_slice(&return_data)?;
         msg!(
             "Additional interface accounts: {:?}",
             &additional_interface_accounts
         );
 
-        // setup lock
-        let remaining_accounts = ctx.remaining_accounts.to_vec();
-
-        let ix_data: Vec<u8> = hash::hash("global:lock".as_bytes()).to_bytes().to_vec();
-        let mut ix_account_metas = vec![
-            AccountMeta::new(token.key(), false),
-            AccountMeta::new_readonly(mint.key(), false),
-            AccountMeta::new(delegate.key(), true),
-            AccountMeta::new(payer.key(), true),
-            AccountMeta::new_readonly(token_program.key(), false),
-        ];
-        ix_account_metas.append(
-            additional_interface_accounts
-                .accounts
-                .iter()
-                .map(|acc| {
-                    if acc.writable {
-                        AccountMeta::new(acc.pubkey, acc.signer)
-                    } else {
-                        AccountMeta::new_readonly(acc.pubkey, acc.signer)
-                    }
-                })
-                .collect::<Vec<AccountMeta>>()
-                .as_mut(),
-        );
-        let ix = anchor_lang::solana_program::instruction::Instruction {
-            program_id: ctx.accounts.perm_program.key(),
-            accounts: ix_account_metas,
-            data: ix_data,
-        };
-
-        let mut ix_ais: Vec<AccountInfo> = vec![
-            token.to_account_info(),
-            mint.to_account_info(),
-            delegate.to_account_info(),
-            payer.to_account_info(),
-            token_program.to_account_info(),
-        ];
-        ix_ais.append(
-            &mut additional_interface_accounts
-                .match_accounts(&remaining_accounts)?
-                .to_vec(),
-        );
-
-        // execute lock
-        invoke(&ix, &ix_ais)?;
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.perm_program.clone(),
+            ILock {
+                token: ctx.accounts.token.clone(),
+                mint: ctx.accounts.mint.clone(),
+                delegate: ctx.accounts.delegate.clone(),
+                payer: ctx.accounts.payer.clone(),
+                token_program: ctx.accounts.token_program.clone(),
+            },
+        )
+        .with_remaining_accounts(ctx.remaining_accounts.to_vec());
+        call_interface_function("lock".to_string(), cpi_ctx, additional_interface_accounts)?;
     }
     Ok(())
 }
 
-fn call_interface_function<'info, T>(
-    ctx: Context<'_, '_, '_, 'info, T>,
+fn call_interface_function<'info, T: ToAccountInfos<'info> + ToAccountMetas>(
     function_name: String,
+    ctx: CpiContext<'_, '_, '_, 'info, T>,
+    additional_interface_accounts: PreflightAccounts,
 ) -> Result<()> {
+    // setup
+    let remaining_accounts = ctx.remaining_accounts.to_vec();
+
+    let ix_data: Vec<u8> = hash::hash(format!("global:{}", &function_name).as_bytes())
+        .to_bytes()
+        .to_vec();
+    let mut ix_account_metas = ctx.to_account_metas(None);
+    ix_account_metas.append(
+        additional_interface_accounts
+            .accounts
+            .iter()
+            .map(|acc| {
+                if acc.writable {
+                    AccountMeta::new(acc.pubkey, acc.signer)
+                } else {
+                    AccountMeta::new_readonly(acc.pubkey, acc.signer)
+                }
+            })
+            .collect::<Vec<AccountMeta>>()
+            .as_mut(),
+    );
+
+    let ix = anchor_lang::solana_program::instruction::Instruction {
+        program_id: ctx.program.key(),
+        accounts: ix_account_metas,
+        data: ix_data,
+    };
+
+    let mut ix_ais: Vec<AccountInfo> = ctx.to_account_infos();
+    ix_ais.append(
+        &mut additional_interface_accounts
+            .match_accounts(&remaining_accounts)?
+            .to_vec(),
+    );
+
+    // execute
+    invoke(&ix, &ix_ais)?;
     Ok(())
+}
+
+#[derive(Accounts)]
+pub struct ILock<'info> {
+    #[account(mut)]
+    pub token: InterfaceAccount<'info, TokenAccount>,
+    pub mint: InterfaceAccount<'info, Mint>,
+    pub delegate: Signer<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 #[derive(Accounts)]
