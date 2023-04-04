@@ -5,6 +5,8 @@ import {
   SystemProgram,
   Keypair,
   Transaction,
+  AccountMeta,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import {
   createInitializeMint2Instruction,
@@ -21,12 +23,65 @@ import {
 import { Caller } from "../target/types/caller";
 import { PermissionedTokenWrapper } from "../target/types/permissioned_token_wrapper";
 import { TwicePermissioned } from "../target/types/twice_permissioned";
+import { IdlInstruction, idlAddress } from "@coral-xyz/anchor/dist/cjs/idl";
+import { AccountsGeneric } from "@coral-xyz/anchor/dist/cjs/program/accounts-resolver";
+
+export type LockContext = {
+  token: anchor.Address;
+  mint: anchor.Address;
+  delegate: anchor.Address;
+  payer: anchor.Address;
+  tokenProgram: anchor.Address;
+  permProgram: anchor.Address;
+};
+export type UnlockContext = {
+  token: anchor.Address;
+  mint: anchor.Address;
+  delegate: anchor.Address;
+  payer: anchor.Address;
+  tokenProgram: anchor.Address;
+  permProgram: anchor.Address;
+};
+
+async function resolveRemainingAccounts(
+  provider: anchor.Provider,
+  instructionName: string,
+  accounts: AccountsGeneric
+): Promise<{ accounts: AccountMeta[]; resolved: 0 }> {
+  let targetProgramAddress = accounts["permProgram"] as PublicKey;
+  let idlAddy = await idlAddress(targetProgramAddress);
+  console.log("idlAddy", idlAddy.toBase58());
+  let targetProgram = await Program.at(targetProgramAddress, provider);
+
+  let ctx: Object;
+  if (instructionName === "lock") {
+    ctx = {
+      token: accounts["token"],
+      mint: accounts["mint"],
+      delegate: accounts["delegate"],
+      payer: accounts["payer"],
+      token_program: accounts["token_program"],
+    };
+  } else if (instructionName === "unlock") {
+    ctx = {
+      token: accounts["token"],
+      mint: accounts["mint"],
+      delegate: accounts["delegate"],
+      token_program: accounts["token_program"],
+    };
+  }
+
+  let builder = targetProgram.methods.lock().accounts(ctx as any);
+  const ix = await builder.instruction();
+  let additionalAccounts = ix.keys.slice(Object.keys(ctx).length);
+  return { accounts: additionalAccounts, resolved: 0 };
+}
 
 describe("caller-program", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const caller = anchor.workspace.Caller as Program<Caller>;
+  let caller = anchor.workspace.Caller as Program<Caller>;
 
   describe("permissioned token", () => {
     const program = anchor.workspace
@@ -103,25 +158,24 @@ describe("caller-program", () => {
         program.programId
       )[0];
 
-      const tx = await caller.methods
-        .lock()
-        .accounts({
-          token: tokenAccount,
-          mint,
-          delegate: program.provider.publicKey!,
-          payer: program.provider.publicKey!,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          permProgram: program.programId,
-        })
-        .remainingAccounts([
-          { pubkey: programControl, isSigner: false, isWritable: false },
-          { pubkey: tokenRecord, isSigner: false, isWritable: true },
-          {
-            pubkey: SystemProgram.programId,
-            isSigner: false,
-            isWritable: false,
-          },
-        ])
+      const lockCtx: LockContext = {
+        token: tokenAccount,
+        mint,
+        delegate: program.provider.publicKey!,
+        payer: program.provider.publicKey!,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        permProgram: program.programId,
+      };
+
+      const builder = caller.methods.lock().accounts(lockCtx);
+      let keys = await builder.pubkeys();
+      let { accounts: remainingAccounts } = await resolveRemainingAccounts(
+        program.provider,
+        "lock",
+        keys
+      );
+      const tx = builder
+        .remainingAccounts(remainingAccounts)
         .rpc({ skipPreflight: true });
       console.log("\tLocked", tx);
     });
@@ -151,26 +205,23 @@ describe("caller-program", () => {
       }
     });
     it("Can unlock user token account", async () => {
-      let trAcc = await program.account.tokenRecord.fetch(tokenRecord);
-      const tx = await caller.methods
-        .unlock()
-        .accounts({
-          token: tokenAccount,
-          mint,
-          delegate: program.provider.publicKey!,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          permProgram: program.programId,
-        })
-        .remainingAccounts([
-          { pubkey: tokenRecord, isSigner: false, isWritable: true },
-          { pubkey: programControl, isSigner: false, isWritable: false },
-          {
-            pubkey: SystemProgram.programId,
-            isSigner: false,
-            isWritable: false,
-          },
-        ])
+      const builder = caller.methods.unlock().accounts({
+        token: tokenAccount,
+        mint,
+        delegate: program.provider.publicKey!,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        permProgram: program.programId,
+      });
+      let keys = await builder.pubkeys();
+      let { accounts: remainingAccounts } = await resolveRemainingAccounts(
+        program.provider,
+        "unlock",
+        keys
+      );
+      let tx = await builder
+        .remainingAccounts(remainingAccounts)
         .rpc({ skipPreflight: true });
+
       console.log("\tUnlocked", tx);
     });
 
@@ -268,47 +319,32 @@ describe("caller-program", () => {
         program.programId
       )[0];
 
-      let tx = await caller.methods
-        .lock()
-        .accounts({
-          token: tokenAccount,
-          mint,
-          delegate: program.provider.publicKey!,
-          payer: program.provider.publicKey!,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          permProgram: program.programId,
-        })
-        .remainingAccounts([
-          { pubkey: programControl, isSigner: false, isWritable: false },
-          { pubkey: tokenRecord, isSigner: false, isWritable: true },
-          {
-            pubkey: SystemProgram.programId,
-            isSigner: false,
-            isWritable: false,
-          },
-        ])
-        .rpc({ skipPreflight: true });
+      let lockCtx: LockContext = {
+        token: tokenAccount,
+        mint,
+        delegate: program.provider.publicKey!,
+        payer: program.provider.publicKey!,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        permProgram: program.programId,
+      };
 
-      tx = await caller.methods
-        .lock()
-        .accounts({
-          token: tokenAccount,
-          mint,
-          delegate: program.provider.publicKey!,
-          payer: program.provider.publicKey!,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          permProgram: program.programId,
-        })
-        .remainingAccounts([
-          { pubkey: programControl, isSigner: false, isWritable: false },
-          { pubkey: tokenRecord, isSigner: false, isWritable: true },
-          {
-            pubkey: SystemProgram.programId,
-            isSigner: false,
-            isWritable: false,
-          },
-        ])
-        .rpc({ skipPreflight: true });
+      const builder = caller.methods.lock().accounts(lockCtx);
+      let keys = await builder.pubkeys();
+      let { accounts: remainingAccounts } = await resolveRemainingAccounts(
+        program.provider,
+        "lock",
+        keys
+      );
+      const transaction = await builder
+        .remainingAccounts(remainingAccounts)
+        .transaction();
+
+      let tx = await program.provider.sendAndConfirm(transaction, [], {
+        skipPreflight: true,
+      });
+      tx = await program.provider.sendAndConfirm(transaction, [], {
+        skipPreflight: true,
+      });
       console.log("\tLocked", tx);
     });
     it("Cannot transfer locked token", async () => {
@@ -337,45 +373,28 @@ describe("caller-program", () => {
       }
     });
     it("Can unlock user token account", async () => {
-      let tx = await caller.methods
-        .unlock()
-        .accounts({
-          token: tokenAccount,
-          mint,
-          delegate: program.provider.publicKey!,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          permProgram: program.programId,
-        })
-        .remainingAccounts([
-          { pubkey: programControl, isSigner: false, isWritable: false },
-          { pubkey: tokenRecord, isSigner: false, isWritable: true },
-          {
-            pubkey: SystemProgram.programId,
-            isSigner: false,
-            isWritable: false,
-          },
-        ])
-        .rpc({ skipPreflight: true });
-
-      tx = await caller.methods
-        .unlock()
-        .accounts({
-          token: tokenAccount,
-          mint,
-          delegate: program.provider.publicKey!,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          permProgram: program.programId,
-        })
-        .remainingAccounts([
-          { pubkey: programControl, isSigner: false, isWritable: false },
-          { pubkey: tokenRecord, isSigner: false, isWritable: true },
-          {
-            pubkey: SystemProgram.programId,
-            isSigner: false,
-            isWritable: false,
-          },
-        ])
-        .rpc({ skipPreflight: true });
+      const builder = caller.methods.unlock().accounts({
+        token: tokenAccount,
+        mint,
+        delegate: program.provider.publicKey!,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        permProgram: program.programId,
+      });
+      let keys = await builder.pubkeys();
+      let { accounts: remainingAccounts } = await resolveRemainingAccounts(
+        program.provider,
+        "unlock",
+        keys
+      );
+      const transaction = await builder
+        .remainingAccounts(remainingAccounts)
+        .transaction();
+      let tx = await program.provider.sendAndConfirm(transaction, [], {
+        skipPreflight: true,
+      });
+      tx = await program.provider.sendAndConfirm(transaction, [], {
+        skipPreflight: true,
+      });
       console.log("\tUnlocked", tx);
     });
 

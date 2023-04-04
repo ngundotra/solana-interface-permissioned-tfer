@@ -1,10 +1,24 @@
 [features]
-seeds = false
+seeds = true
 skip-lint = false
+
 [programs.localnet]
 permissioned_token_wrapper = "7vnNq5wAJPAoocKqwRWv6dUoZBGrZDCS3ULspFXGdGVx"
 twice_permissioned = "6Cjkj2r1Mhos8JrM7v3CZCW9SkLGjX2UKr42hk2Zx5oJ"
 caller = "6Dmq9ijrYZio9ny6PezemaWe3kcs7qbJ8sB78LHgQDeY"
+
+[programs.devnet]
+permissioned_token_wrapper = "7vnNq5wAJPAoocKqwRWv6dUoZBGrZDCS3ULspFXGdGVx"
+twice_permissioned = "6Cjkj2r1Mhos8JrM7v3CZCW9SkLGjX2UKr42hk2Zx5oJ"
+caller = "6Dmq9ijrYZio9ny6PezemaWe3kcs7qbJ8sB78LHgQDeY"
+
+[[test.validator.account]]
+address = "44jUpTaeKj6R9kGrrgiSkE6g416Nr36sraf2vCYBKWEd"
+filename = "/Users/noahgundotra/Documents/core/srfc-research/permissioned-token-wrapper/accounts/permissioned_token_wrapper-idl.json"
+
+[[test.validator.account]]
+address = "8W1Hm2ti24WdycYWUnNLf2bFYekHdqkRkFLXvrXFJ2aE"
+filename = "/Users/noahgundotra/Documents/core/srfc-research/permissioned-token-wrapper/accounts/twice_permissioned-idl.json"
 
 [registry]
 url = "https://api.apr.dev"
